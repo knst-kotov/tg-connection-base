@@ -3,6 +3,7 @@ package tgBot
 import (
 	"context"
 
+	"github.com/CookieNyanCloud/tg-connection-base/repo"
 	"github.com/CookieNyanCloud/tg-connection-base/service"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -16,9 +17,9 @@ const (
 )
 
 type Handler struct {
-	Ctx  context.Context
-	Chat int64
-	//Cache  repo.ICache
+	Ctx    context.Context
+	Chat   int64
+	Cache  repo.ICache
 	Sheets service.ISheets
 	Bot    *tgbotapi.BotAPI
 }
@@ -26,13 +27,13 @@ type Handler struct {
 func NewHandler(
 	ctx context.Context,
 	chat int64,
-//cache repo.ICache,
+	cache repo.ICache,
 	sheets service.ISheets,
 	bot *tgbotapi.BotAPI) *Handler {
 	return &Handler{
-		Ctx:  ctx,
-		Chat: chat,
-		//Cache:  cache,
+		Ctx:    ctx,
+		Chat:   chat,
+		Cache:  cache,
 		Sheets: sheets,
 		Bot:    bot,
 	}

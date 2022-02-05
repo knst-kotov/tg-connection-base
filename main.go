@@ -4,10 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/CookieNyanCloud/tg-connection-base/config"
+	"github.com/CookieNyanCloud/tg-connection-base/repo"
 	"github.com/CookieNyanCloud/tg-connection-base/service"
 	"github.com/CookieNyanCloud/tg-connection-base/tgBot"
+	"github.com/go-redis/redis/v8"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
@@ -23,11 +29,11 @@ func main() {
 	}
 
 	//cache
-	//redisClient, err := repo.NewRedisClient(conf.RedisAddr, ctx)
-	//if err != nil {
-	//	log.Fatalf("redis client: %v", err)
-	//}
-	//cache := repo.NewCache(redisClient.Client, conf.KeepTime)
+	redisClient, err := repo.NewRedisClient(conf.RedisAddr, ctx)
+	if err != nil {
+		log.Fatalf("redis client: %v", err)
+	}
+	cache := repo.NewCache(redisClient.Client, conf.KeepTime)
 
 	//google sheets
 	srv, err := sheets.NewService(ctx, option.WithCredentialsFile("drive.json"))
@@ -37,27 +43,26 @@ func main() {
 	sheets := service.NewSheetsSrv(srv)
 
 	//graceful shutdown
-	//quit := make(chan os.Signal, 1)
-	//signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	//go func(ctx context.Context, db *redis.Client) {
-	//	<-quit
-	//	fmt.Println("shutdown")
-	//	const timeout = 5 * time.Second
-	//	ctx, shutdown := context.WithTimeout(context.Background(), timeout)
-	//	defer shutdown()
-	//	if err := db.Close(); err != nil {
-	//		log.Fatalf("closing db: %v", err)
-	//	}
-	//	os.Exit(1)
-	//}(ctx, redisClient.Client)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	go func(ctx context.Context, db *redis.Client) {
+		<-quit
+		fmt.Println("shutdown")
+		const timeout = 5 * time.Second
+		ctx, shutdown := context.WithTimeout(context.Background(), timeout)
+		defer shutdown()
+		if err := db.Close(); err != nil {
+			log.Fatalf("closing db: %v", err)
+		}
+		os.Exit(1)
+	}(ctx, redisClient.Client)
 
 	//tg
 	bot, updates, err := tgBot.StartBot(conf.Token)
 	if err != nil {
 		log.Fatalf("tg: %v", err)
 	}
-	//handler := tgBot.NewHandler(ctx, conf.Chat, cache, sheets, bot)
-	handler := tgBot.NewHandler(ctx, conf.Chat, sheets, bot)
+	handler := tgBot.NewHandler(ctx, conf.Chat, cache, sheets, bot)
 
 	for update := range updates {
 
