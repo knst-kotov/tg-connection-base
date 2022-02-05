@@ -1,23 +1,8 @@
 package service
 
 import (
-	"time"
-
 	"google.golang.org/api/sheets/v4"
 )
-
-type Contact struct {
-	Nic  string
-	Name string
-}
-
-type Appeal struct {
-	Nic       string
-	Name      string
-	Time      time.Time
-	Locations string
-	Text      string
-}
 
 type SheetsSrv struct {
 	srv *sheets.Service
@@ -28,7 +13,24 @@ func NewSheetsSrv(srv *sheets.Service) *SheetsSrv {
 }
 
 type ISheets interface {
-	SaveContact() error
+	SaveContact(id int64, name, nick string) error
 	GetAll() error
-	SaveMsg() error
+	SaveMsg(id int64, msgId int) error
+	GetFirst() (int64, int, error)
+}
+
+func (s SheetsSrv) SaveContact(id int64, name, nick string) error {
+	panic("implement me")
+}
+
+func (s SheetsSrv) GetAll() error {
+	panic("implement me")
+}
+
+func (s SheetsSrv) SaveMsg(id int64, msgId int) error {
+	panic("implement me")
+}
+
+func (s SheetsSrv) GetFirst() (int64, int, error) {
+	panic("implement me")
 }
