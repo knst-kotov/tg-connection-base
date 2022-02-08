@@ -30,36 +30,36 @@ func main() {
 	}
 
 	//cache
-	redisClient, err := pkg.NewRedisClient(conf.RedisAddr, ctx)
+	redisClient, err := pkg.NewRedisClient(conf.Redis.Addr, ctx)
 	if err != nil {
 		log.Fatalf("redis client: %v", err)
 	}
-	cache := cache2.NewCache(ctx, redisClient.Client, conf.KeepTime)
+	cache := cache2.NewCache(ctx, redisClient.Client, conf.Redis.KeepTime)
 
 	//google sheets
 	srv, err := sheets.NewService(ctx, option.WithCredentialsFile("drive.json"))
 	if err != nil {
 		log.Fatalf("Unable to parse credantials file: %v", err)
 	}
-	sheetsSrv := database.NewSheetsSrv(srv, conf.SheetDB, conf.SheetMsg, conf.SheetAdmins)
+	sheetsSrv := database.NewSheetsSrv(srv, conf.Sheets.DB, conf.Sheets.Msg, conf.Sheets.Admins)
 
 	//graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	go func(ctx context.Context, db *redis.Client) {
+	go func(ctx context.Context, cache *redis.Client) {
 		<-quit
 		fmt.Println("shutdown")
 		const timeout = 5 * time.Second
 		ctx, shutdown := context.WithTimeout(context.Background(), timeout)
 		defer shutdown()
-		if err := db.Close(); err != nil {
-			log.Fatalf("closing db: %v", err)
+		if err := cache.Close(); err != nil {
+			log.Fatalf("closing cache: %v", err)
 		}
 		os.Exit(1)
 	}(ctx, redisClient.Client)
 
 	//tg
-	bot, updates, err := pkg.StartBot(conf.Token)
+	bot, updates, err := pkg.StartBot(conf.Tg.Token)
 	if err != nil {
 		log.Fatalf("tg: %v", err)
 	}
