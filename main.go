@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	cache2 "github.com/CookieNyanCloud/tg-connection-base/cache"
 	"github.com/CookieNyanCloud/tg-connection-base/config"
-	"github.com/CookieNyanCloud/tg-connection-base/repo"
-	"github.com/CookieNyanCloud/tg-connection-base/service"
-	"github.com/CookieNyanCloud/tg-connection-base/tgBot"
+	"github.com/CookieNyanCloud/tg-connection-base/database"
+	"github.com/CookieNyanCloud/tg-connection-base/handlers"
+	"github.com/CookieNyanCloud/tg-connection-base/pkg"
 	"github.com/go-redis/redis/v8"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
@@ -29,18 +30,18 @@ func main() {
 	}
 
 	//cache
-	redisClient, err := repo.NewRedisClient(conf.RedisAddr, ctx)
+	redisClient, err := pkg.NewRedisClient(conf.RedisAddr, ctx)
 	if err != nil {
 		log.Fatalf("redis client: %v", err)
 	}
-	cache := repo.NewCache(redisClient.Client, conf.KeepTime)
+	cache := cache2.NewCache(ctx, redisClient.Client, conf.KeepTime)
 
 	//google sheets
 	srv, err := sheets.NewService(ctx, option.WithCredentialsFile("drive.json"))
 	if err != nil {
 		log.Fatalf("Unable to parse credantials file: %v", err)
 	}
-	sheets := service.NewSheetsSrv(srv)
+	sheetsSrv := database.NewSheetsSrv(srv, conf.SheetDB, conf.SheetMsg, conf.SheetAdmins)
 
 	//graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -58,40 +59,85 @@ func main() {
 	}(ctx, redisClient.Client)
 
 	//tg
-	bot, updates, err := tgBot.StartBot(conf.Token)
+	bot, updates, err := pkg.StartBot(conf.Token)
 	if err != nil {
 		log.Fatalf("tg: %v", err)
 	}
-	handler := tgBot.NewHandler(ctx, conf.Chat, cache, sheets, bot)
+	handler := handlers.NewHandler(cache, sheetsSrv, bot)
+
+	//load admins from google sheet
+	admins, err := handler.Storage.LoadAdmins()
+	if err != nil {
+		log.Fatalf("loadAdmins: %v", err)
+	}
 
 	for update := range updates {
 
 		if update.Message == nil {
 			continue
 		}
+		// admins
+		if _, ok := admins[update.Message.Chat.ID]; ok {
+			if update.Message.IsCommand() {
+				switch update.Message.Command() {
+				// get next users messages
+				case "last":
+					err := handler.Find(update.Message.Chat.ID)
+					logErr("Find", err)
+				// add admin
+				case "add":
+					err := handler.AddAdmin(update.Message.CommandArguments())
+					logErr("AddAdmin", err)
 
+				case "all":
+					err := handler.SendAll(update.Message.CommandArguments())
+					logErr("SendAll", err)
+
+				// no such command
+				default:
+					err := handler.Unknown(update.Message.Chat.ID)
+					logErr("Unknown", err)
+				}
+
+				continue
+			}
+
+			// answer to user
+			if update.Message.ReplyToMessage != nil {
+				err := handler.ReplyToMsg(update.Message.ReplyToMessage.MessageID, update.Message.Text)
+				logErr("ReplyToMsg", err)
+			}
+		}
+
+		// users
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
+
+			// save user inter
 			case "start":
-				err := handler.Starting()
-				logErr("start: %v", err)
+				err := handler.Starting(
+					update.Message.Chat.ID,
+					update.Message.From.FirstName+" "+update.Message.From.LastName,
+					update.Message.Chat.UserName)
+				logErr("start", err)
+
+			// no such command
 			default:
-				err := handler.Unknown()
-				logErr("start: %v", err)
+				err := handler.Unknown(update.Message.Chat.ID)
+				logErr("Unknown", err)
 			}
 			continue
 		}
 
-		if update.Message.Text == "обратная связь" {
-			err := handler.Feedback()
-			logErr("feedback: %v", err)
-			continue
-		}
+		// message from user
+		err := handler.Feedback(update.Message.Chat.ID, update.Message.MessageID)
+		logErr("Feedback", err)
+
 	}
 }
 
 func logErr(msg string, err error) {
 	if err != nil {
-		fmt.Printf(msg, err)
+		fmt.Printf(msg+": %v\n", err)
 	}
 }

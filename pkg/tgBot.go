@@ -1,4 +1,4 @@
-package tgBot
+package pkg
 
 import (
 	"log"
