@@ -57,7 +57,7 @@ func (s SheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 }
 
 func (s SheetsSrv) SaveAdmin(id int64, nick string) error {
-	//todo:range for append
+	//todo:check range for append
 	inValue := make([]interface{}, 1)
 	inValue[0] = id
 	inValue[1] = nick
