@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/sheets/v4"
 )
 
@@ -31,7 +32,7 @@ type IStorage interface {
 	ClearMsgs(id int64) error
 	// admins
 	LoadAdmins() (map[int64]struct{}, error)
-	SaveAdmin(nick string) error
+	SaveAdmin(id int64, nick string) error
 	GetLast() (int64, []int, error)
 	// users
 	SaveContact(id int64, name, nick string) error
@@ -55,8 +56,29 @@ func (s SheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 	return out, nil
 }
 
-func (s SheetsSrv) SaveAdmin(nick string) error {
-	panic("implement me")
+func (s SheetsSrv) SaveAdmin(id int64, nick string) error {
+	//todo:range for append
+	inValue := make([]interface{}, 1)
+	inValue[0] = id
+	inValue[1] = nick
+	outValue := make([][]interface{}, 1)
+	outValue[0] = inValue
+	valRen := sheets.ValueRange{
+		MajorDimension:  "ROWS",
+		Range:           "Sheet1!A1:A1",
+		Values:          outValue,
+		ServerResponse:  googleapi.ServerResponse{},
+		ForceSendFields: nil,
+		NullFields:      nil,
+	}
+	_, err := s.srv.Spreadsheets.Values.
+		Append(s.admins, "Sheet1!A1:A1", &valRen).
+		ValueInputOption("RAW").
+		Do()
+	if err != nil {
+		return errors.Wrap(err, "Unable to retrieve files")
+	}
+	return nil
 }
 
 func (s SheetsSrv) GetLast() (int64, []int, error) {
