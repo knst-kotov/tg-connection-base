@@ -14,7 +14,7 @@ const (
 	token = "TG_TOKEN"
 	chat  = "TG_CHAT"
 	//google
-	sheetDB     = "SHEET_DB"
+	sheetUsers  = "SHEET_USERS"
 	sheetMsg    = "SHEET_MSG"
 	sheetAdmins = "SHEET_ADMINS"
 	//cache
@@ -35,7 +35,7 @@ type (
 	}
 
 	SheetsConfig struct {
-		DB     string
+		Users  string
 		Msg    string
 		Admins string
 	}
@@ -77,7 +77,7 @@ func envVar(test bool) (*Conf, error) {
 			Chat:  int64(chatInt),
 		},
 		Sheets: SheetsConfig{
-			DB:     os.Getenv(sheetDB),
+			Users:  os.Getenv(sheetUsers),
 			Msg:    os.Getenv(sheetMsg),
 			Admins: os.Getenv(sheetAdmins),
 		},

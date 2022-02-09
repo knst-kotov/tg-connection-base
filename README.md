@@ -3,11 +3,14 @@
 ## Запуск
 - `make up` (docker-compose up -d)
 
+## Таблицы
+- необходим аккаунт с GCP и включенным sheets api для создания сервисного ключа sheets.json
+
 ### Переменные
 ```dotenv
 TG_TOKEN=
 TG_CHAT=
-SHEET_DB=
+SHEET_USERS=
 SHEET_MSG=
 SHEET_ADMINS=
 CACHE_ADDR=
