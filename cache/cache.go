@@ -22,13 +22,6 @@ func NewCache(ctx context.Context, db *redis.Client, keepTime int64) *Cache {
 	}
 }
 
-type ICache interface {
-	SetUser(msgId int, userId int64) error
-	GetUser(msgId int) (int64, error)
-	SetBan(userId int64) error
-	GetBan(userId int64) (bool, error)
-}
-
 func (c *Cache) SetUser(msgId int, userId int64, ) error {
 	return c.db.Set(c.ctx, strconv.Itoa(msgId), userId, time.Duration(int64(time.Hour)*c.keepTime)).Err()
 }

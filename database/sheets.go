@@ -28,18 +28,6 @@ func NewSheetsSrv(
 	}
 }
 
-type IStorage interface {
-	ClearMsgs(id int64) error
-	// admins
-	LoadAdmins() (map[int64]struct{}, error)
-	SaveAdmin(id int64, nick string) error
-	GetLast() (int64, []int, error)
-	// users
-	SaveContact(id int64, name, nick string) error
-	GetAll() ([]int64, error)
-	SaveMsg(id int64, msgId int) error
-}
-
 func (s SheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 	out := make(map[int64]struct{})
 	rsp, err := s.srv.Spreadsheets.Values.Get(s.admins, "Sheet1!A1:A1").Do()

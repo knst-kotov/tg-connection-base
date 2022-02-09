@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"github.com/CookieNyanCloud/tg-connection-base/cache"
-	"github.com/CookieNyanCloud/tg-connection-base/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 )
@@ -14,15 +12,34 @@ const (
 	saveTxt     = "обращение передано"
 )
 
+type IStorage interface {
+	ClearMsgs(id int64) error
+	// admins
+	LoadAdmins() (map[int64]struct{}, error)
+	SaveAdmin(id int64, nick string) error
+	GetLast() (int64, []int, error)
+	// users
+	SaveContact(id int64, name, nick string) error
+	GetAll() ([]int64, error)
+	SaveMsg(id int64, msgId int) error
+}
+
+type ICache interface {
+	SetUser(msgId int, userId int64) error
+	GetUser(msgId int) (int64, error)
+	SetBan(userId int64) error
+	GetBan(userId int64) (bool, error)
+}
+
 type Handler struct {
-	Cache   cache.ICache
-	Storage database.IStorage
+	Cache   ICache
+	Storage IStorage
 	Bot     *tgbotapi.BotAPI
 }
 
 func NewHandler(
-	cache cache.ICache,
-	sheets database.IStorage,
+	cache ICache,
+	sheets IStorage,
 	bot *tgbotapi.BotAPI) *Handler {
 	return &Handler{
 		Cache:   cache,
@@ -78,8 +95,8 @@ func (h *Handler) Feedback(id int64, msgId int) error {
 }
 
 //add new admin
-func (h *Handler) AddAdmin(nick string) error {
-	err := h.Storage.SaveAdmin(nick)
+func (h *Handler) AddAdmin(id int64, nick string) error {
+	err := h.Storage.SaveAdmin(id, nick)
 	if err != nil {
 		return errors.Wrap(err, "SaveAdmin")
 	}
