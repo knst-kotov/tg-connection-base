@@ -54,7 +54,7 @@ type IHandler interface {
 	Starting(id int64, name, nick string) error
 	Feedback(id int64, msgId int) error
 	// admin
-	AddAdmin(nick string) error
+	AddAdmin(id int64, nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
