@@ -10,13 +10,6 @@ import (
 )
 
 const (
-	//postgres
-	host     = "PSQL_HOST"
-	port     = "PSQL_PORT"
-	username = "PSQL_USERNAME"
-	dbName   = "PSQL_DBNAME"
-	sslMode  = "PSQL_SSLMODE"
-	password = "PSQL_PASSWORD"
 	//tg
 	token = "TG_TOKEN"
 	chat  = "TG_CHAT"
@@ -31,20 +24,11 @@ const (
 
 type (
 	Conf struct {
-		Postgres PostgresConfig
-		Tg       TgConfig
-		Sheets   SheetsConfig
-		Redis    RedisConfig
+		Tg     TgConfig
+		Sheets SheetsConfig
+		Redis  RedisConfig
 	}
 
-	PostgresConfig struct {
-		Host     string
-		Port     string
-		Username string
-		DBName   string
-		SSLMode  string
-		Password string
-	}
 	TgConfig struct {
 		Token string
 		Chat  int64
@@ -88,14 +72,6 @@ func envVar(test bool) (*Conf, error) {
 	}
 
 	return &Conf{
-		Postgres: PostgresConfig{
-			Host:     os.Getenv(host),
-			Port:     os.Getenv(port),
-			Username: os.Getenv(username),
-			DBName:   os.Getenv(dbName),
-			SSLMode:  os.Getenv(sslMode),
-			Password: os.Getenv(password),
-		},
 		Tg: TgConfig{
 			Token: os.Getenv(token),
 			Chat:  int64(chatInt),
