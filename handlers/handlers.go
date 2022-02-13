@@ -6,14 +6,11 @@ import (
 )
 
 const (
-	welcome     = "обратная связь: тест: кнопка в меню"
-	feedbackTxt = "обратая связь"
-	unknownTxt  = "неизвестная команда"
-	saveTxt     = "обращение передано"
+	welcome    = "обратная связь: тест: кнопка в меню"
+	unknownTxt = "неизвестная команда"
 )
 
 type IStorage interface {
-	ClearMsgs(id int64) error
 	// admins
 	LoadAdmins() (map[int64]struct{}, error)
 	SaveAdmin(id int64, nick string) error
@@ -31,40 +28,41 @@ type ICache interface {
 	GetBan(userId int64) (bool, error)
 }
 
-type Handler struct {
-	Cache   ICache
-	Storage IStorage
-	Bot     *tgbotapi.BotAPI
+type handler struct {
+	cache   ICache
+	storage IStorage
+	bot     *tgbotapi.BotAPI
 }
 
 func NewHandler(
 	cache ICache,
 	sheets IStorage,
-	bot *tgbotapi.BotAPI) *Handler {
-	return &Handler{
-		Cache:   cache,
-		Storage: sheets,
-		Bot:     bot,
+	bot *tgbotapi.BotAPI) *handler {
+	return &handler{
+		cache:   cache,
+		storage: sheets,
+		bot:     bot,
 	}
 }
 
 type IHandler interface {
 	Unknown(id int64) error
-	// user
+	//user
 	Starting(id int64, name, nick string) error
 	Feedback(id int64, msgId int) error
-	// admin
+	//admin
 	AddAdmin(id int64, nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
+	LoadAdmins() (map[int64]struct{}, error)
 	//	todo:?chat
 }
 
 //unknown command
-func (h *Handler) Unknown(id int64) error {
+func (h *handler) Unknown(id int64) error {
 	msg := tgbotapi.NewMessage(id, unknownTxt)
-	_, err := h.Bot.Send(msg)
+	_, err := h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")
 	}
@@ -72,13 +70,13 @@ func (h *Handler) Unknown(id int64) error {
 }
 
 //first message, save info
-func (h *Handler) Starting(id int64, name, nick string) error {
+func (h *handler) Starting(id int64, name, nick string) error {
 	msg := tgbotapi.NewMessage(id, welcome)
-	_, err := h.Bot.Send(msg)
+	_, err := h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")
 	}
-	err = h.Storage.SaveContact(id, name, nick)
+	err = h.storage.SaveContact(id, name, nick)
 	if err != nil {
 		return errors.Wrap(err, "SaveContact")
 	}
@@ -86,8 +84,8 @@ func (h *Handler) Starting(id int64, name, nick string) error {
 }
 
 //save message id, answered when needed
-func (h *Handler) Feedback(id int64, msgId int) error {
-	err := h.Storage.SaveMsg(id, msgId)
+func (h *handler) Feedback(id int64, msgId int) error {
+	err := h.storage.SaveMsg(id, msgId)
 	if err != nil {
 		return errors.Wrap(err, "SaveMsg")
 	}
@@ -95,27 +93,32 @@ func (h *Handler) Feedback(id int64, msgId int) error {
 }
 
 //add new admin
-func (h *Handler) AddAdmin(id int64, nick string) error {
-	err := h.Storage.SaveAdmin(id, nick)
+func (h *handler) AddAdmin(id int64, nick string) error {
+	err := h.storage.SaveAdmin(id, nick)
 	if err != nil {
 		return errors.Wrap(err, "SaveAdmin")
 	}
 	return nil
 }
 
+//get all admins
+func (h *handler) LoadAdmins() (map[int64]struct{}, error) {
+	return h.storage.LoadAdmins()
+}
+
 //get last user to answer
-func (h *Handler) Find(toId int64) error {
-	fromId, msgId, err := h.Storage.GetLast()
+func (h *handler) Find(toId int64) error {
+	fromId, msgId, err := h.storage.GetLast()
 	if err != nil {
 		return errors.Wrap(err, "GetLast")
 	}
 	for _, id := range msgId {
 		forward := tgbotapi.NewForward(toId, fromId, id)
-		_, err = h.Bot.Send(forward)
+		_, err = h.bot.Send(forward)
 		if err != nil {
 			return errors.Wrap(err, "Send")
 		}
-		err := h.Cache.SetUser(id, fromId)
+		err := h.cache.SetUser(id, fromId)
 		if err != nil {
 			return errors.Wrap(err, "SetUser")
 		}
@@ -124,13 +127,13 @@ func (h *Handler) Find(toId int64) error {
 }
 
 //answer to message
-func (h *Handler) ReplyToMsg(msgId int, txt string) error {
-	userId, err := h.Cache.GetUser(msgId)
+func (h *handler) ReplyToMsg(msgId int, txt string) error {
+	userId, err := h.cache.GetUser(msgId)
 	if err != nil {
 		return errors.Wrap(err, "GetUser")
 	}
 	msg := tgbotapi.NewMessage(userId, txt)
-	_, err = h.Bot.Send(msg)
+	_, err = h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")
 	}
@@ -138,14 +141,14 @@ func (h *Handler) ReplyToMsg(msgId int, txt string) error {
 }
 
 //send text to everyone
-func (h *Handler) SendAll(txt string) error {
-	all, err := h.Storage.GetAll()
+func (h *handler) SendAll(txt string) error {
+	all, err := h.storage.GetAll()
 	if err != nil {
 		return errors.Wrap(err, "GetAll")
 	}
 	for _, id := range all {
 		msg := tgbotapi.NewMessage(id, txt)
-		_, err := h.Bot.Send(msg)
+		_, err := h.bot.Send(msg)
 		if err != nil {
 			return errors.Wrap(err, "Send")
 		}

@@ -1,14 +1,16 @@
 package database
 
 import (
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/sheets/v4"
 )
 
-type SheetsSrv struct {
+type sheetsSrv struct {
 	srv    *sheets.Service
 	db     string
 	msg    string
@@ -19,8 +21,8 @@ func NewSheetsSrv(
 	srv *sheets.Service,
 	db string,
 	msg string,
-	admins string) *SheetsSrv {
-	return &SheetsSrv{
+	admins string) *sheetsSrv {
+	return &sheetsSrv{
 		srv:    srv,
 		db:     db,
 		msg:    msg,
@@ -28,9 +30,10 @@ func NewSheetsSrv(
 	}
 }
 
-func (s SheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
+func (s sheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
+	//todo:check range
 	out := make(map[int64]struct{})
-	rsp, err := s.srv.Spreadsheets.Values.Get(s.admins, "Sheet1!A1:A1").Do()
+	rsp, err := s.srv.Spreadsheets.Values.Get(s.admins, "Sheet1!A:A").Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "Get")
 	}
@@ -44,23 +47,24 @@ func (s SheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 	return out, nil
 }
 
-func (s SheetsSrv) SaveAdmin(id int64, nick string) error {
+func (s sheetsSrv) SaveAdmin(id int64, nick string) error {
 	//todo:check range for append
-	inValue := make([]interface{}, 1)
+	inValue := make([]interface{}, 2)
 	inValue[0] = id
 	inValue[1] = nick
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
 	valRen := sheets.ValueRange{
-		MajorDimension:  "ROWS",
-		Range:           "Sheet1!A1:A1",
+		MajorDimension: "ROWS",
+		//todo:is required?
+		Range:           "",
 		Values:          outValue,
 		ServerResponse:  googleapi.ServerResponse{},
 		ForceSendFields: nil,
 		NullFields:      nil,
 	}
 	_, err := s.srv.Spreadsheets.Values.
-		Append(s.admins, "Sheet1!A1:A1", &valRen).
+		Append(s.admins, "Sheet1!A:B", &valRen).
 		ValueInputOption("RAW").
 		Do()
 	if err != nil {
@@ -69,45 +73,122 @@ func (s SheetsSrv) SaveAdmin(id int64, nick string) error {
 	return nil
 }
 
-func (s SheetsSrv) GetLast() (int64, []int, error) {
-	panic("implement me")
+func (s sheetsSrv) GetLast() (int64, []int, error) {
+	msgIds := make([]int, 0)
+	rsp, err := s.srv.Spreadsheets.Values.Get(s.db, "Sheet1!A1:C1").Do()
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "Get")
+	}
+	id, ok := rsp.Values[0][0].(int64)
+	if !ok {
+		return 0, nil, errors.New("not an int")
+	}
+	idsStr := rsp.Values[0][0].(string)
+	if !ok {
+		return 0, nil, errors.New("not a string")
+	}
+	msgIdsStr := strings.Split(idsStr, ",")
+	for _, id := range msgIdsStr {
+		idint, err := strconv.Atoi(id)
+		if err != nil {
+			return 0, nil, errors.Wrap(err, "Atoi")
+		}
+		msgIds = append(msgIds, idint)
+	}
+	opt := sheets.ClearValuesRequest{}
+	s.srv.Spreadsheets.Values.Clear(s.msg, "Sheet1!A1:C1", &opt)
+	return id, msgIds, nil
 }
 
-func (s SheetsSrv) SaveContact(id int64, name, nick string) error {
-	panic("implement me")
+func (s sheetsSrv) SaveContact(id int64, name, nick string) error {
+	inValue := make([]interface{}, 3)
+	inValue[0] = id
+	inValue[1] = name
+	inValue[2] = nick
+	outValue := make([][]interface{}, 1)
+	outValue[0] = inValue
+	valRen := sheets.ValueRange{
+		MajorDimension:  "ROWS",
+		Range:           "",
+		Values:          outValue,
+		ServerResponse:  googleapi.ServerResponse{},
+		ForceSendFields: nil,
+		NullFields:      nil,
+	}
+	_, err := s.srv.Spreadsheets.Values.
+		Append(s.db, "Sheet1!A:C", &valRen).
+		ValueInputOption("RAW").
+		Do()
+	if err != nil {
+		return errors.Wrap(err, "Unable to retrieve files")
+	}
+	return nil
 }
 
-func (s SheetsSrv) GetAll() ([]int64, error) {
-	panic("implement me")
+func (s sheetsSrv) GetAll() ([]int64, error) {
+	out := make([]int64, 0)
+	rsp, err := s.srv.Spreadsheets.Values.Get(s.db, "Sheet1!A:A").Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	for _, row := range rsp.Values {
+		id, ok := row[0].(int64)
+		if !ok {
+			return nil, errors.Wrap(err, "not an int64")
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
-func (s SheetsSrv) SaveMsg(id int64, msgId int) error {
-	panic("implement me")
+func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
+	valueRange, ints, err := s.searchRows(s.msg, string(id), "Sheet1!A:A", )
+	if err != nil {
+		return errors.Wrap(err, "searchRows")
+	}
+	if len(ints) != 1 {
+		return errors.New("not 1 line")
+	}
+	inValue := make([]interface{}, 3)
+	inValue[0] = id
+	inValue[1] = string(msgId) + "," + valueRange.Values[0][1].(string)
+	inValue[2] = time.Now().Unix()
+	outValue := make([][]interface{}, 1)
+	outValue[0] = inValue
+	valRen := sheets.ValueRange{
+		MajorDimension:  "ROWS",
+		Range:           valueRange.Range,
+		Values:          outValue,
+		ServerResponse:  googleapi.ServerResponse{},
+		ForceSendFields: nil,
+		NullFields:      nil,
+	}
+	_, err = s.srv.Spreadsheets.Values.
+		Update(s.db, valueRange.Range, &valRen).
+		ValueInputOption("RAW").
+		Do()
+	if err != nil {
+		return errors.Wrap(err, "Unable to retrieve files")
+	}
+	return nil
 }
 
-func (s SheetsSrv) ClearMsgs(id int64) error {
-	panic("implement me")
-}
-
-func (s SheetsSrv) searchRows(srv *sheets.Service, sheetId, search string) (*sheets.ValueRange, []int, error) {
-	readRange := "Sheet1!A:B"
-	resp, err := srv.Spreadsheets.Values.Get(sheetId, readRange).Do()
+func (s sheetsSrv) searchRows(sheetId, searchInput, searchRange string) (*sheets.ValueRange, []int, error) {
+	resp, err := s.srv.Spreadsheets.Values.Get(sheetId, searchRange).Do()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Unable to retrieve data from sheet")
 	}
-	var y []int
+	y := make([]int, 0)
 	if len(resp.Values) == 0 {
 		return nil, nil, errors.New("no rows")
 	}
 	for i, row := range resp.Values {
-		for _, cell := range row {
-			c1, ok := cell.(string)
-			if !ok {
-				return nil, nil, errors.Wrap(err, "cast")
-			}
-			if strings.Contains(c1, search) {
-				y = append(y, i+1)
-			}
+		c1, ok := row[0].(string)
+		if !ok {
+			return nil, nil, errors.Wrap(err, "cast")
+		}
+		if strings.Contains(c1, searchInput) {
+			y = append(y, i+1)
 		}
 	}
 	return resp, y, nil

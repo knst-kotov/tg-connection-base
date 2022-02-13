@@ -66,7 +66,7 @@ func main() {
 	handler := handlers.NewHandler(cache, sheetsSrv, bot)
 
 	//load admins from google sheet
-	admins, err := handler.Storage.LoadAdmins()
+	admins, err := handler.LoadAdmins()
 	if err != nil {
 		log.Fatalf("loadAdmins: %v", err)
 	}
