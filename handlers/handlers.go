@@ -13,7 +13,7 @@ const (
 type IStorage interface {
 	// admins
 	LoadAdmins() (map[int64]struct{}, error)
-	SaveAdmin(id int64, nick string) error
+	SaveAdmin(nick string) error
 	GetLast() (int64, []int, error)
 	// users
 	SaveContact(id int64, name, nick string) error
@@ -51,7 +51,7 @@ type IHandler interface {
 	Starting(id int64, name, nick string) error
 	Feedback(id int64, msgId int) error
 	//admin
-	AddAdmin(id int64, nick string) error
+	AddAdmin(nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
@@ -93,8 +93,8 @@ func (h *handler) Feedback(id int64, msgId int) error {
 }
 
 //add new admin
-func (h *handler) AddAdmin(id int64, nick string) error {
-	err := h.storage.SaveAdmin(id, nick)
+func (h *handler) AddAdmin(nick string) error {
+	err := h.storage.SaveAdmin(nick)
 	if err != nil {
 		return errors.Wrap(err, "SaveAdmin")
 	}

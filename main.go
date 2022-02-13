@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	cache2 "github.com/CookieNyanCloud/tg-connection-base/cache"
+	"github.com/CookieNyanCloud/tg-connection-base/cache"
 	"github.com/CookieNyanCloud/tg-connection-base/config"
 	"github.com/CookieNyanCloud/tg-connection-base/database"
 	"github.com/CookieNyanCloud/tg-connection-base/handlers"
@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("redis client: %v", err)
 	}
-	cache := cache2.NewCache(ctx, redisClient.Client, conf.Redis.KeepTime)
+	redisCache := cache.NewCache(ctx, redisClient.Client, conf.Redis.KeepTime)
 
 	//google sheets
 	srv, err := sheets.NewService(ctx, option.WithCredentialsFile("sheets.json"))
@@ -63,7 +63,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("tg: %v", err)
 	}
-	handler := handlers.NewHandler(cache, sheetsSrv, bot)
+	handler := handlers.NewHandler(redisCache, sheetsSrv, bot)
 
 	//load admins from google sheet
 	admins, err := handler.LoadAdmins()
@@ -78,18 +78,18 @@ func main() {
 		}
 		// admins
 		if _, ok := admins[update.Message.Chat.ID]; ok {
-			if update.Message.IsCommand() {
-				switch update.Message.Command() {
+			if update.Message.Text != "" && update.Message.ReplyToMessage == nil {
+				switch update.Message.Text {
 				// get next users messages
-				case "last":
+				case "следующий":
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)
 				// add admin
-				case "add":
+				case "добавить админа":
 					err := handler.AddAdmin(update.Message.CommandArguments())
 					logErr("AddAdmin", err)
 
-				case "all":
+				case "всем":
 					err := handler.SendAll(update.Message.CommandArguments())
 					logErr("SendAll", err)
 
@@ -112,7 +112,6 @@ func main() {
 		// users
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
-
 			// save user inter
 			case "start":
 				err := handler.Starting(

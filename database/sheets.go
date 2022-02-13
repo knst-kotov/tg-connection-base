@@ -10,6 +10,8 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+var errNoRows = errors.New("no rows")
+
 type sheetsSrv struct {
 	srv    *sheets.Service
 	db     string
@@ -47,11 +49,10 @@ func (s sheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 	return out, nil
 }
 
-func (s sheetsSrv) SaveAdmin(id int64, nick string) error {
+func (s sheetsSrv) SaveAdmin(nick string) error {
 	//todo:check range for append
-	inValue := make([]interface{}, 2)
-	inValue[0] = id
-	inValue[1] = nick
+	inValue := make([]interface{}, 1)
+	inValue[0] = nick
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
 	valRen := sheets.ValueRange{
@@ -101,6 +102,7 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 }
 
 func (s sheetsSrv) SaveContact(id int64, name, nick string) error {
+	//todo:duplicates
 	inValue := make([]interface{}, 3)
 	inValue[0] = id
 	inValue[1] = name
@@ -144,10 +146,12 @@ func (s sheetsSrv) GetAll() ([]int64, error) {
 func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
 	valueRange, ints, err := s.searchRows(s.msg, string(id), "Sheet1!A:A", )
 	if err != nil {
-		return errors.Wrap(err, "searchRows")
+		if err != errNoRows {
+			return errors.Wrap(err, "searchRows")
+		}
 	}
-	if len(ints) != 1 {
-		return errors.New("not 1 line")
+	if len(ints) > 1 {
+		return errors.New("not a single row")
 	}
 	inValue := make([]interface{}, 3)
 	inValue[0] = id
@@ -180,7 +184,7 @@ func (s sheetsSrv) searchRows(sheetId, searchInput, searchRange string) (*sheets
 	}
 	y := make([]int, 0)
 	if len(resp.Values) == 0 {
-		return nil, nil, errors.New("no rows")
+		return nil, nil, errNoRows
 	}
 	for i, row := range resp.Values {
 		c1, ok := row[0].(string)
