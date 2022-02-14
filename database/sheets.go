@@ -1,9 +1,9 @@
 package database
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
@@ -40,11 +40,11 @@ func (s sheetsSrv) LoadAdmins() (map[int64]struct{}, error) {
 		return nil, errors.Wrap(err, "Get")
 	}
 	for _, row := range rsp.Values {
-		id, ok := row[0].(int64)
-		if !ok {
+		id, err := strconv.Atoi(row[0].(string))
+		if err != nil {
 			return nil, errors.Wrap(err, "not an int64")
 		}
-		out[id] = struct{}{}
+		out[int64(id)] = struct{}{}
 	}
 	return out, nil
 }
@@ -80,14 +80,11 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "Get")
 	}
-	id, ok := rsp.Values[0][0].(int64)
-	if !ok {
-		return 0, nil, errors.New("not an int")
+	id, err := strconv.Atoi(rsp.Values[0][0].(string))
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "Atoi")
 	}
 	idsStr := rsp.Values[0][0].(string)
-	if !ok {
-		return 0, nil, errors.New("not a string")
-	}
 	msgIdsStr := strings.Split(idsStr, ",")
 	for _, id := range msgIdsStr {
 		idint, err := strconv.Atoi(id)
@@ -98,7 +95,7 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	}
 	opt := sheets.ClearValuesRequest{}
 	s.srv.Spreadsheets.Values.Clear(s.msg, "Sheet1!A1:C1", &opt)
-	return id, msgIds, nil
+	return int64(id), msgIds, nil
 }
 
 func (s sheetsSrv) SaveContact(id int64, name, nick string) error {
@@ -134,29 +131,57 @@ func (s sheetsSrv) GetAll() ([]int64, error) {
 		return nil, errors.Wrap(err, "Get")
 	}
 	for _, row := range rsp.Values {
-		id, ok := row[0].(int64)
-		if !ok {
-			return nil, errors.Wrap(err, "not an int64")
+		id, err := strconv.Atoi(row[0].(string))
+		if err != nil {
+			return nil, errors.Wrap(err, "Atoi")
 		}
-		out = append(out, id)
+		out = append(out, int64(id))
 	}
 	return out, nil
 }
 
 func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
-	valueRange, ints, err := s.searchRows(s.msg, string(id), "Sheet1!A:A", )
+	fmt.Println(id, msgId)
+	//check if exists
+	valueRange, ints, err := s.searchRows(s.msg, string(id), "Sheet1!A:B", )
 	if err != nil {
+		fmt.Println(1)
+		//not a single line error
 		if err != errNoRows {
+			fmt.Println(2)
 			return errors.Wrap(err, "searchRows")
 		}
+		fmt.Println(3)
+		//	insert instead of update
+		inValue := make([]interface{}, 2)
+		inValue[0] = id
+		inValue[1] = strconv.Itoa(msgId)
+		outValue := make([][]interface{}, 1)
+		outValue[0] = inValue
+		valRen := sheets.ValueRange{
+			MajorDimension:  "ROWS",
+			Range:           "",
+			Values:          outValue,
+			ServerResponse:  googleapi.ServerResponse{},
+			ForceSendFields: nil,
+			NullFields:      nil,
+		}
+		_, err = s.srv.Spreadsheets.Values.
+			Append(s.msg, "Sheet1!A:B", &valRen).
+			ValueInputOption("RAW").
+			Do()
+		if err != nil {
+			return errors.Wrap(err, "Unable to retrieve files")
+		}
+		return nil
 	}
+	fmt.Println(4)
 	if len(ints) > 1 {
 		return errors.New("not a single row")
 	}
-	inValue := make([]interface{}, 3)
+	inValue := make([]interface{}, 2)
 	inValue[0] = id
-	inValue[1] = string(msgId) + "," + valueRange.Values[0][1].(string)
-	inValue[2] = time.Now().Unix()
+	inValue[1] = strconv.Itoa(msgId) + "," + valueRange.Values[0][1].(string)
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
 	valRen := sheets.ValueRange{
@@ -168,7 +193,7 @@ func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
 		NullFields:      nil,
 	}
 	_, err = s.srv.Spreadsheets.Values.
-		Update(s.db, valueRange.Range, &valRen).
+		Update(s.msg, valueRange.Range, &valRen).
 		ValueInputOption("RAW").
 		Do()
 	if err != nil {

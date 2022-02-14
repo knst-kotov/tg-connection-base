@@ -15,6 +15,7 @@ import (
 	"github.com/CookieNyanCloud/tg-connection-base/handlers"
 	"github.com/CookieNyanCloud/tg-connection-base/pkg"
 	"github.com/go-redis/redis/v8"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
@@ -78,10 +79,20 @@ func main() {
 		}
 		// admins
 		if _, ok := admins[update.Message.Chat.ID]; ok {
+			//todo:remove
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "админ")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("следующий на очереди"),
+					tgbotapi.NewKeyboardButton("добавить админа"),
+					tgbotapi.NewKeyboardButton("отправить всем"),
+				),
+			)
+			_, _ = bot.Send(msg)
 			if update.Message.Text != "" && update.Message.ReplyToMessage == nil {
 				switch update.Message.Text {
 				// get next users messages
-				case "следующий":
+				case "следующий на очереди":
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)
 				// add admin
@@ -89,7 +100,7 @@ func main() {
 					err := handler.AddAdmin(update.Message.CommandArguments())
 					logErr("AddAdmin", err)
 
-				case "всем":
+				case "отправить всем":
 					err := handler.SendAll(update.Message.CommandArguments())
 					logErr("SendAll", err)
 
