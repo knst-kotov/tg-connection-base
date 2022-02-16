@@ -20,6 +20,13 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+var helpTxt = `
+/help - помощь
+/next - сообщения соедующего на очереди
+/add (nickname) - добавть админа по нику
+/all (text) - отправить всем пользователям текст
+`
+
 func main() {
 
 	var ctx = context.Background()
@@ -77,61 +84,52 @@ func main() {
 		if update.Message == nil {
 			continue
 		}
+
 		// admins
-		if _, ok := admins[update.Message.Chat.ID]; ok {
-			//todo:remove
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "админ")
-			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
-				tgbotapi.NewKeyboardButtonRow(
-					tgbotapi.NewKeyboardButton("следующий на очереди"),
-					tgbotapi.NewKeyboardButton("добавить админа"),
-					tgbotapi.NewKeyboardButton("отправить всем"),
-				),
-			)
-			_, _ = bot.Send(msg)
-			if update.Message.Text != "" && update.Message.ReplyToMessage == nil {
-				switch update.Message.Text {
-				// get next users messages
-				case "следующий на очереди":
+		if _, ok := admins[update.Message.Chat.UserName]; ok {
+			//commands
+			if update.Message.IsCommand() {
+				switch update.Message.Command() {
+				case "start":
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "АДМИН\n"+helpTxt)
+					_, _ = bot.Send(msg)
+				case "help":
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpTxt)
+					_, _ = bot.Send(msg)
+				case "next":
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)
-				// add admin
-				case "добавить админа":
+				case "add":
 					err := handler.AddAdmin(update.Message.CommandArguments())
+					admins[update.Message.CommandArguments()] = struct{}{}
 					logErr("AddAdmin", err)
-
-				case "отправить всем":
+				case "all":
 					err := handler.SendAll(update.Message.CommandArguments())
 					logErr("SendAll", err)
-
-				// no such command
 				default:
 					err := handler.Unknown(update.Message.Chat.ID)
 					logErr("Unknown", err)
 				}
-
-				continue
 			}
 
 			// answer to user
 			if update.Message.ReplyToMessage != nil {
 				err := handler.ReplyToMsg(update.Message.ReplyToMessage.MessageID, update.Message.Text)
 				logErr("ReplyToMsg", err)
+				continue
 			}
+			continue
 		}
 
 		// users
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
-			// save user inter
 			case "start":
 				err := handler.Starting(
 					update.Message.Chat.ID,
 					update.Message.From.FirstName+" "+update.Message.From.LastName,
 					update.Message.Chat.UserName)
 				logErr("start", err)
-
-			// no such command
 			default:
 				err := handler.Unknown(update.Message.Chat.ID)
 				logErr("Unknown", err)

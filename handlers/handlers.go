@@ -1,18 +1,20 @@
 package handlers
 
 import (
+	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 )
 
 const (
-	welcome    = "обратная связь: тест: кнопка в меню"
+	welcome    = "Бот связи"
 	unknownTxt = "неизвестная команда"
 )
 
 type IStorage interface {
 	// admins
-	LoadAdmins() (map[int64]struct{}, error)
+	LoadAdmins() (map[string]struct{}, error)
 	SaveAdmin(nick string) error
 	GetLast() (int64, []int, error)
 	// users
@@ -55,7 +57,7 @@ type IHandler interface {
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
-	LoadAdmins() (map[int64]struct{}, error)
+	LoadAdmins() (map[string]struct{}, error)
 	//	todo:?chat
 }
 
@@ -102,26 +104,36 @@ func (h *handler) AddAdmin(nick string) error {
 }
 
 //get all admins
-func (h *handler) LoadAdmins() (map[int64]struct{}, error) {
+func (h *handler) LoadAdmins() (map[string]struct{}, error) {
 	return h.storage.LoadAdmins()
 }
 
 //get last user to answer
 func (h *handler) Find(toId int64) error {
-	fromId, msgId, err := h.storage.GetLast()
+	fromId, msgIds, err := h.storage.GetLast()
 	if err != nil {
 		return errors.Wrap(err, "GetLast")
 	}
-	for _, id := range msgId {
-		forward := tgbotapi.NewForward(toId, fromId, id)
-		_, err = h.bot.Send(forward)
+	for _, id := range msgIds {
+		msg := tgbotapi.ForwardConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: toId,
+			},
+			FromChatID: fromId,
+			MessageID:  id,
+		}
+		fmt.Println(fromId, msgIds)
+		forwarded, err := h.bot.Send(msg)
 		if err != nil {
 			return errors.Wrap(err, "Send")
 		}
-		err := h.cache.SetUser(id, fromId)
+		err = h.cache.SetUser(forwarded.MessageID, fromId)
+		fmt.Println(id)
+		fmt.Println(forwarded.MessageID)
 		if err != nil {
 			return errors.Wrap(err, "SetUser")
 		}
+
 	}
 	return nil
 }
