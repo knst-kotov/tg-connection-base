@@ -36,7 +36,7 @@ type handler struct {
 	bot     *tgbotapi.BotAPI
 }
 
-func NewHandler(
+func New(
 	cache ICache,
 	sheets IStorage,
 	bot *tgbotapi.BotAPI) *handler {

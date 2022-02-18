@@ -42,7 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("redis client: %v", err)
 	}
-	redisCache := cache.NewCache(ctx, redisClient.Client, conf.Redis.KeepTime)
+	redisCache := cache.New(ctx, redisClient.Client, conf.Redis.KeepTime)
 
 	//google sheets
 	srv, err := sheets.NewService(ctx, option.WithCredentialsFile("sheets.json"))
@@ -71,7 +71,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("tg: %v", err)
 	}
-	handler := handlers.NewHandler(redisCache, sheetsSrv, bot)
+	handler := handlers.New(redisCache, sheetsSrv, bot)
 
 	//load admins from google sheet
 	admins, err := handler.LoadAdmins()

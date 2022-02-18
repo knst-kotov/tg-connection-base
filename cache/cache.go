@@ -14,7 +14,7 @@ type Cache struct {
 	keepTime int64
 }
 
-func NewCache(ctx context.Context, db *redis.Client, keepTime int64) *Cache {
+func New(ctx context.Context, db *redis.Client, keepTime int64) *Cache {
 	return &Cache{
 		ctx:      ctx,
 		db:       db,
