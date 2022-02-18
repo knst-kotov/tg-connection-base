@@ -92,10 +92,12 @@ func main() {
 				switch update.Message.Command() {
 				case "start":
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "АДМИН\n"+helpTxt)
-					_, _ = bot.Send(msg)
+					_, err = bot.Send(msg)
+					logErr("Find", err)
 				case "help":
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpTxt)
-					_, _ = bot.Send(msg)
+					_, err = bot.Send(msg)
+					logErr("Find", err)
 				case "next":
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)

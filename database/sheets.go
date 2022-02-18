@@ -83,6 +83,9 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "Get")
 	}
+	if len(rsp.Values) == 0 {
+		return 0, nil, errNoRows
+	}
 	id, err := strconv.Atoi(rsp.Values[0][0].(string))
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "Atoi")
@@ -143,6 +146,9 @@ func (s sheetsSrv) GetAll() ([]int64, error) {
 		Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "Get")
+	}
+	if len(rsp.Values) == 0 {
+		return nil, errNoRows
 	}
 	for _, row := range rsp.Values {
 		id, err := strconv.Atoi(row[0].(string))
@@ -225,8 +231,10 @@ func (s sheetsSrv) searchRows(sheetId, searchInput, searchRange string) (*sheets
 		return nil, nil, errors.Wrap(err, "Unable to retrieve data from sheet")
 	}
 	y := make([]int, 0)
+	//todo:check
+	fmt.Println(len(resp.Values))
 	if len(resp.Values) == 0 {
-		return nil, nil, errNoRows
+		return resp, nil, nil
 	}
 	for i, row := range resp.Values {
 		c1, ok := row[0].(string)

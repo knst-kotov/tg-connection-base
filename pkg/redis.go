@@ -14,8 +14,6 @@ type redisDB struct {
 func NewRedisClient(addr string, ctx context.Context) (*redisDB, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr: addr,
-		//Password: cfg.Password,
-		//DB:       cfg.DB,
 	})
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, errors.Wrap(err, "NewDatabase ping")

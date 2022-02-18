@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 )
@@ -122,14 +120,12 @@ func (h *handler) Find(toId int64) error {
 			FromChatID: fromId,
 			MessageID:  id,
 		}
-		fmt.Println(fromId, msgIds)
 		forwarded, err := h.bot.Send(msg)
 		if err != nil {
 			return errors.Wrap(err, "Send")
 		}
 		err = h.cache.SetUser(forwarded.MessageID, fromId)
-		fmt.Println(id)
-		fmt.Println(forwarded.MessageID)
+
 		if err != nil {
 			return errors.Wrap(err, "SetUser")
 		}
