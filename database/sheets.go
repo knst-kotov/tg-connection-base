@@ -77,7 +77,6 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "sortSheet")
 	}
-	//msgIds := make([]int, 0)
 	rsp, err := s.srv.Spreadsheets.Values.
 		Get(s.msg, "Sheet1!A1:B1").
 		Do()
@@ -90,24 +89,18 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	}
 	idsStr := rsp.Values[0][1].(string)
 	msgIdsStrs := strings.Split(idsStr, ",")
-	var msgIds []int
+	msgIds := make([]int, len(msgIdsStrs))
 	for i, id := range msgIdsStrs {
-		msgIds = make([]int, len(msgIdsStrs))
 		idint, err := strconv.Atoi(id)
 		if err != nil {
 			return 0, nil, errors.Wrap(err, "Atoi")
 		}
-		//todo:check
-		//msgIds = append(msgIds, idint)
 		msgIds[len(msgIds)-i-1] = idint
 	}
-	fmt.Println("start")
 	err = s.clearRow()
 	if err != nil {
-		fmt.Println("err")
 		return 0, nil, errors.Wrap(err, "clearRow")
 	}
-	fmt.Println("end")
 	return int64(id), msgIds, nil
 }
 
@@ -292,9 +285,9 @@ func (s *sheetsSrv) sortSheet() error {
 
 func (s *sheetsSrv) clearRow() error {
 	inValue := make([]interface{}, 3)
-	inValue[0] = " "
-	inValue[1] = " "
-	inValue[2] = " "
+	inValue[0] = ""
+	inValue[1] = ""
+	inValue[2] = ""
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
 	valRen := sheets.ValueRange{
@@ -305,10 +298,10 @@ func (s *sheetsSrv) clearRow() error {
 		ForceSendFields: nil,
 		NullFields:      nil,
 	}
-	res, err := s.srv.Spreadsheets.Values.
-		Update(s.db, "Sheet1!A1:C1", &valRen).
+	_, err := s.srv.Spreadsheets.Values.
+		Update(s.msg, "Sheet1!A1:C1", &valRen).
 		ValueInputOption("RAW").
 		Do()
-	fmt.Println(res)
+	fmt.Println("OUT")
 	return err
 }
