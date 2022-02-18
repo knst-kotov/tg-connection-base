@@ -12,7 +12,6 @@ import (
 const (
 	//tg
 	token = "TG_TOKEN"
-	chat  = "TG_CHAT"
 	//google
 	sheetUsers  = "SHEET_USERS"
 	sheetMsg    = "SHEET_MSG"
@@ -31,7 +30,6 @@ type (
 
 	TgConfig struct {
 		Token string
-		Chat  int64
 	}
 
 	SheetsConfig struct {
@@ -62,10 +60,6 @@ func envVar(test bool) (*Conf, error) {
 		}
 	}
 
-	chatInt, err := strconv.Atoi(os.Getenv(chat))
-	if err != nil {
-		return nil, errors.Wrap(err, "chat")
-	}
 	keepTimeInt, err := strconv.Atoi(os.Getenv(keepTime))
 	if err != nil {
 		return nil, errors.Wrap(err, "keepTime")
@@ -74,7 +68,6 @@ func envVar(test bool) (*Conf, error) {
 	return &Conf{
 		Tg: TgConfig{
 			Token: os.Getenv(token),
-			Chat:  int64(chatInt),
 		},
 		Sheets: SheetsConfig{
 			Users:  os.Getenv(sheetUsers),

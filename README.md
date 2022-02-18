@@ -9,7 +9,6 @@
 ### Переменные
 ```dotenv
 TG_TOKEN=
-TG_CHAT=
 SHEET_USERS=
 SHEET_MSG=
 SHEET_ADMINS=
