@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -102,8 +103,9 @@ func main() {
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)
 				case "add":
-					err := handler.AddAdmin(update.Message.CommandArguments())
-					admins[update.Message.CommandArguments()] = struct{}{}
+					nick := strings.Trim(update.Message.CommandArguments(), "@")
+					err := handler.AddAdmin(nick)
+					admins[nick] = struct{}{}
 					logErr("AddAdmin", err)
 				case "all":
 					err := handler.SendAll(update.Message.CommandArguments())
