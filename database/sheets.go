@@ -104,6 +104,10 @@ func (s sheetsSrv) GetLast() (int64, []int, error) {
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "clearRow")
 	}
+	err = s.sortSheet()
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "sortSheet")
+	}
 	return int64(id), msgIds, nil
 }
 
@@ -161,17 +165,18 @@ func (s sheetsSrv) GetAll() ([]int64, error) {
 }
 
 func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
+	fmt.Println("start")
 	//check if exists
 	valueRange, ints, err := s.searchRows(s.msg, strconv.FormatInt(id, 10), "Sheet1!A:C", )
+	//not a single line error
 	if err != nil {
-		fmt.Println(1)
-		//not a single line error
-		if err != errNoRows {
-			fmt.Println(2)
-			return errors.Wrap(err, "searchRows")
-		}
-		fmt.Println(3)
-		//	insert instead of update
+		fmt.Println("err 1")
+		return errors.Wrap(err, "searchRows")
+	}
+	fmt.Println(1)
+	//	insert instead of update
+	if len(ints) == 0 {
+		fmt.Println("first")
 		inValue := make([]interface{}, 3)
 		inValue[0] = id
 		inValue[1] = msgId
@@ -193,33 +198,37 @@ func (s sheetsSrv) SaveMsg(id int64, msgId int) error {
 		if err != nil {
 			return errors.Wrap(err, "Append")
 		}
+		fmt.Println("end")
 		return nil
 	}
-	fmt.Println(4)
-	if len(ints) > 1 {
+	fmt.Println(2)
+	if len(ints) != 1 {
 		return errors.New("not a single row")
 	}
 	inValue := make([]interface{}, 3)
 	inValue[0] = id
-	inValue[1] = strconv.Itoa(msgId) + "," + valueRange.Values[0][1].(string)
+	inValue[1] = strconv.Itoa(msgId) + "," + valueRange.Values[ints[0]-1][1].(string)
 	inValue[2] = time.Now().Unix()
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
+	r := fmt.Sprintf("Sheet1!A%d:C%d", ints[0], ints[0])
 	valRen := sheets.ValueRange{
 		MajorDimension:  "ROWS",
-		Range:           valueRange.Range,
+		Range:           r,
 		Values:          outValue,
 		ServerResponse:  googleapi.ServerResponse{},
 		ForceSendFields: nil,
 		NullFields:      nil,
 	}
+	fmt.Println(r)
 	_, err = s.srv.Spreadsheets.Values.
-		Update(s.msg, valueRange.Range, &valRen).
+		Update(s.msg, r, &valRen).
 		ValueInputOption("RAW").
 		Do()
 	if err != nil {
 		return errors.Wrap(err, "Update")
 	}
+	fmt.Println("end")
 	return nil
 }
 
@@ -231,11 +240,6 @@ func (s sheetsSrv) searchRows(sheetId, searchInput, searchRange string) (*sheets
 		return nil, nil, errors.Wrap(err, "Unable to retrieve data from sheet")
 	}
 	y := make([]int, 0)
-	//todo:check
-	fmt.Println(len(resp.Values))
-	if len(resp.Values) == 0 {
-		return resp, nil, nil
-	}
 	for i, row := range resp.Values {
 		c1, ok := row[0].(string)
 		if !ok {
@@ -249,7 +253,6 @@ func (s sheetsSrv) searchRows(sheetId, searchInput, searchRange string) (*sheets
 }
 
 func (s *sheetsSrv) sortSheet() error {
-	//todo:fix
 	sort := &sheets.SortRangeRequest{
 		Range: &sheets.GridRange{
 			EndColumnIndex:   3,
