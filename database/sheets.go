@@ -316,3 +316,21 @@ func (s *sheetsSrv) clearRow() error {
 	fmt.Println("OUT")
 	return err
 }
+
+func (s sheetsSrv) GetStat() (map[string]int, error) {
+	out := make(map[string]int)
+
+	rsp, err := s.srv.Spreadsheets.Values.Get(s.db, "Sheet1!A:A").Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	out["contacts"] = len(rsp.Values)
+
+	rsp, err = s.srv.Spreadsheets.Values.Get(s.msg, "Sheet1!A:A").Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	out["messages"] = len(rsp.Values)
+
+	return out, nil
+}

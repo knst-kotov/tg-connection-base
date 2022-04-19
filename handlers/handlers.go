@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 )
@@ -21,6 +23,7 @@ type IStorage interface {
 	SaveContact(id int64, name, nick string) error
 	GetAll() ([]int64, error)
 	SaveMsg(id int64, msgId int) error
+	GetStat() (map[string]int, error)
 }
 
 type ICache interface {
@@ -59,6 +62,7 @@ type IHandler interface {
 	Find(toId int64) error
 	LoadAdmins() (map[string]struct{}, error)
 	//	todo:?chat
+	Stat(id int64) error
 }
 
 //unknown command
@@ -162,6 +166,25 @@ func (h *handler) SendAll(txt string) error {
 		if err != nil {
 			return errors.Wrap(err, "Send")
 		}
+	}
+	return nil
+}
+
+func (h *handler) Stat(id int64) error {
+	stat, err := h.storage.GetStat()
+	if err != nil {
+		return errors.Wrap(err, "GetStat")
+	}
+
+	stat_text := "статистика по боту\n"
+	for key, value := range stat {
+		stat_text += fmt.Sprintf("%v = %v\n", key, value)
+	}
+
+	msg := tgbotapi.NewMessage(id, stat_text)
+	_, err = h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
 	}
 	return nil
 }

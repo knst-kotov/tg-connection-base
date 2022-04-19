@@ -26,6 +26,7 @@ var helpTxt = `
 /next - сообщения следующего на очереди
 /add (nickname) - добавить админа по нику
 /all (text) - отправить всем пользователям текст
+/stat - статистика по боту
 `
 
 func main() {
@@ -110,6 +111,9 @@ func main() {
 				case "all":
 					err := handler.SendAll(update.Message.CommandArguments())
 					logErr("SendAll", err)
+				case "stat":
+					err := handler.Stat(update.Message.Chat.ID)
+					logErr("Stat", err)
 				default:
 					err := handler.Unknown(update.Message.Chat.ID)
 					logErr("Unknown", err)
