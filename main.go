@@ -81,6 +81,9 @@ func main() {
 		log.Fatalf("loadAdmins: %v", err)
 	}
 
+	//set region dialog with users
+	setRegionDialog := make(map[int64]bool)
+
 	for update := range updates {
 
 		if update.Message == nil {
@@ -95,11 +98,11 @@ func main() {
 				case "start":
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "АДМИН\n"+helpTxt)
 					_, err = bot.Send(msg)
-					logErr("Find", err)
+					logErr("Send", err)
 				case "help":
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpTxt)
 					_, err = bot.Send(msg)
-					logErr("Find", err)
+					logErr("Send", err)
 				case "next":
 					err := handler.Find(update.Message.Chat.ID)
 					logErr("Find", err)
@@ -135,9 +138,14 @@ func main() {
 			case "start":
 				err := handler.Starting(
 					update.Message.Chat.ID,
-					update.Message.From.FirstName+" "+update.Message.From.LastName,
+					update.Message.From.FirstName + " " + update.Message.From.LastName,
 					update.Message.Chat.UserName)
 				logErr("start", err)
+			case "region":
+				setRegionDialog[update.Message.Chat.ID] = true
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пожалуйста, введите регион вашего проживания:")
+				_, err = bot.Send(msg)
+				logErr("Send", err)
 			default:
 				err := handler.Unknown(update.Message.Chat.ID)
 				logErr("Unknown", err)
@@ -146,8 +154,15 @@ func main() {
 		}
 
 		// message from user
-		err := handler.Feedback(update.Message.Chat.ID, update.Message.MessageID)
-		logErr("Feedback", err)
+		if _, ok := setRegionDialog[update.Message.Chat.ID]; ok {
+			region := update.Message.Text
+			err := handler.SetRegion(update.Message.Chat.ID, region)
+			delete(setRegionDialog, update.Message.Chat.ID)
+			logErr("SetRegion", err)
+		} else {
+			err := handler.Feedback(update.Message.Chat.ID, update.Message.MessageID)
+			logErr("Feedback", err)
+		}
 
 	}
 }

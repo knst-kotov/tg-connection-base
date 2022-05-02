@@ -21,6 +21,7 @@ type IStorage interface {
 	GetLast() (int64, []int, error)
 	// users
 	SaveContact(id int64, name, nick string) error
+	SaveRegion(id int64, region string) error
 	GetAll() ([]int64, error)
 	SaveMsg(id int64, msgId int) error
 	GetStat() (map[string]int, error)
@@ -55,13 +56,13 @@ type IHandler interface {
 	//user
 	Starting(id int64, name, nick string) error
 	Feedback(id int64, msgId int) error
+	SetRegion(id int64, region string) error
 	//admin
 	AddAdmin(nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
 	LoadAdmins() (map[string]struct{}, error)
-	//	todo:?chat
 	Stat(id int64) error
 }
 
@@ -95,6 +96,21 @@ func (h *handler) Feedback(id int64, msgId int) error {
 	if err != nil {
 		return errors.Wrap(err, "SaveMsg")
 	}
+	return nil
+}
+
+func (h *handler) SetRegion(id int64, region string) error {
+	err := h.storage.SaveRegion(id, region)
+	if err != nil {
+		return errors.Wrap(err, "SaveRegion")
+	}
+
+	msg := tgbotapi.NewMessage(id, "регион успешно сохранён")
+	_, err = h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
+	}
+
 	return nil
 }
 

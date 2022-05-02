@@ -143,6 +143,39 @@ func (s sheetsSrv) SaveContact(id int64, name, nick string) error {
 	return nil
 }
 
+func (s sheetsSrv) SaveRegion(id int64, region string) error {
+	_, ints, err := s.searchRows(s.db, strconv.Itoa(int(id)), "Sheet1!A:A")
+	if err != nil && err != errNoRows {
+		return errors.Wrap(err, "searchRows")
+	}
+	if len(ints) != 1 {
+		return errors.New("contact not found")
+	}
+
+	inValue := make([]interface{}, 1)
+	inValue[0] = region
+	outValue := make([][]interface{}, 1)
+	outValue[0] = inValue
+	r := fmt.Sprintf("Sheet1!D%d:D%d", ints[0], ints[0])
+	valRen := sheets.ValueRange{
+		MajorDimension:  "ROWS",
+		Range:           "",
+		Values:          outValue,
+		ServerResponse:  googleapi.ServerResponse{},
+		ForceSendFields: nil,
+		NullFields:      nil,
+	}
+	_, err = s.srv.Spreadsheets.Values.
+		Update(s.db, r, &valRen).
+		ValueInputOption("RAW").
+		Do()
+	if err != nil {
+		return errors.Wrap(err, "unable to insert values")
+	}
+
+	return nil
+}
+
 func (s sheetsSrv) GetAll() ([]int64, error) {
 	out := make([]int64, 0)
 	rsp, err := s.srv.Spreadsheets.Values.
