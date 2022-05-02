@@ -11,6 +11,8 @@ const (
 	welcome    = `Вас приветствует телеграм-бот "Мир, Прогресс и Права Человека"
 оставьте сообщение и мы вам скоро ответим`
 
+	feedback   = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
+
 	unknownTxt = "неизвестная команда"
 )
 
@@ -96,6 +98,13 @@ func (h *handler) Feedback(id int64, msgId int) error {
 	if err != nil {
 		return errors.Wrap(err, "SaveMsg")
 	}
+
+	msg := tgbotapi.NewMessage(id, feedback)
+	_, err = h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
+	}
+
 	return nil
 }
 
