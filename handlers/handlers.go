@@ -13,6 +13,10 @@ const (
 
 	feedback   = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
 
+	regionStart = `Пожалуйста, введите регион вашего проживания:`
+
+	regionOk   = `регион успешно сохранён`
+
 	unknownTxt = "неизвестная команда"
 )
 
@@ -40,6 +44,8 @@ type handler struct {
 	cache   ICache
 	storage IStorage
 	bot     *tgbotapi.BotAPI
+
+	inRegionDialog map[int64]bool
 }
 
 func New(
@@ -50,6 +56,7 @@ func New(
 		cache:   cache,
 		storage: sheets,
 		bot:     bot,
+		inRegionDialog: make(map[int64]bool),
 	}
 }
 
@@ -58,7 +65,9 @@ type IHandler interface {
 	//user
 	Starting(id int64, name, nick string) error
 	Feedback(id int64, msgId int) error
-	SetRegion(id int64, region string) error
+	StartRegionDialog(id int64) error
+	InRegionDialog(id int64) bool
+	EndRegionDialog(id int64, region string) error
 	//admin
 	AddAdmin(nick string) error
 	ReplyToMsg(msgId int, txt string) error
@@ -108,13 +117,31 @@ func (h *handler) Feedback(id int64, msgId int) error {
 	return nil
 }
 
-func (h *handler) SetRegion(id int64, region string) error {
+func (h *handler) StartRegionDialog(id int64) error {
+	h.inRegionDialog[id] = true
+	msg := tgbotapi.NewMessage(id, regionStart)
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
+	}
+	
+	return nil
+}
+
+func (h *handler) InRegionDialog(id int64) bool {
+	_, ok := h.inRegionDialog[id]
+	return ok
+}
+
+func (h *handler) EndRegionDialog(id int64, region string) error {
 	err := h.storage.SaveRegion(id, region)
 	if err != nil {
 		return errors.Wrap(err, "SaveRegion")
 	}
 
-	msg := tgbotapi.NewMessage(id, "регион успешно сохранён")
+	delete(h.inRegionDialog, id)
+
+	msg := tgbotapi.NewMessage(id, regionOk)
 	_, err = h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")

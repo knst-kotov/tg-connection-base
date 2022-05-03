@@ -81,9 +81,6 @@ func main() {
 		log.Fatalf("loadAdmins: %v", err)
 	}
 
-	//set region dialog with users
-	setRegionDialog := make(map[int64]bool)
-
 	for update := range updates {
 
 		if update.Message == nil {
@@ -142,10 +139,8 @@ func main() {
 					update.Message.Chat.UserName)
 				logErr("start", err)
 			case "region":
-				setRegionDialog[update.Message.Chat.ID] = true
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пожалуйста, введите регион вашего проживания:")
-				_, err = bot.Send(msg)
-				logErr("Send", err)
+				err := handler.StartRegionDialog(update.Message.Chat.ID)
+				logErr("StartRegionDialog", err)
 			default:
 				err := handler.Unknown(update.Message.Chat.ID)
 				logErr("Unknown", err)
@@ -154,11 +149,10 @@ func main() {
 		}
 
 		// message from user
-		if _, ok := setRegionDialog[update.Message.Chat.ID]; ok {
+		if handler.InRegionDialog(update.Message.Chat.ID) {
 			region := update.Message.Text
-			err := handler.SetRegion(update.Message.Chat.ID, region)
-			delete(setRegionDialog, update.Message.Chat.ID)
-			logErr("SetRegion", err)
+			err := handler.EndRegionDialog(update.Message.Chat.ID, region)
+			logErr("EndRegionDialog", err)
 		} else {
 			err := handler.Feedback(update.Message.Chat.ID, update.Message.MessageID)
 			logErr("Feedback", err)
