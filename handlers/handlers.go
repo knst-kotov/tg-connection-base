@@ -25,6 +25,7 @@ const (
 type IStorage interface {
 	// admins
 	LoadAdmins() (map[string]struct{}, error)
+	LoadBanned() (map[string]struct{}, error)
 	SaveAdmin(nick string) error
 	GetLast() (int64, []int, error)
 	// users
@@ -48,6 +49,8 @@ type handler struct {
 	bot     *tgbotapi.BotAPI
 
 	inRegionDialog map[int64]bool
+
+	bannedUsers map[string]struct{}
 }
 
 func New(
@@ -141,12 +144,16 @@ func (h *handler) InRegionDialog(id int64) bool {
 }
 
 func (h *handler) IsBanned(id int64, name string) (bool, error) {
-	banned := (name == "knst_kotov")
-	msg := tgbotapi.NewMessage(id, bannedTxt)
-	_, err := h.bot.Send(msg)
-	if err != nil {
-		return banned, errors.Wrap(err, "Send")
+	if h.bannedUsers == nil {
+		h.bannedUsers, _ = h.storage.LoadBanned()
 	}
+
+	_, banned := h.bannedUsers[name]
+	if banned {
+		msg := tgbotapi.NewMessage(id, bannedTxt)
+		h.bot.Send(msg)
+	}
+
 	return banned, nil
 }
 

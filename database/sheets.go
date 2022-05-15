@@ -18,24 +18,27 @@ type sheetsSrv struct {
 	db     string
 	msg    string
 	admins string
+	banned string
 }
 
 func NewSheetsSrv(
 	srv *sheets.Service,
 	db string,
 	msg string,
-	admins string) *sheetsSrv {
+	admins string,
+	banned string) *sheetsSrv {
 	return &sheetsSrv{
 		srv:    srv,
 		db:     db,
 		msg:    msg,
 		admins: admins,
+		banned: banned,
 	}
 }
 
-func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
+func LoadColumnAsString(s sheetsSrv, table string) (map[string]struct{}, error) {
 	out := make(map[string]struct{})
-	rsp, err := s.srv.Spreadsheets.Values.Get(s.admins, "Sheet1!A:A").Do()
+	rsp, err := s.srv.Spreadsheets.Values.Get(table, "Sheet1!A:A").Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "Get")
 	}
@@ -47,6 +50,14 @@ func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
 		out[nick] = struct{}{}
 	}
 	return out, nil
+}
+
+func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
+	return LoadColumnAsString(s, s.admins)
+}
+
+func (s sheetsSrv) LoadBanned() (map[string]struct{}, error) {
+	return LoadColumnAsString(s, s.banned)
 }
 
 func (s sheetsSrv) SaveAdmin(nick string) error {

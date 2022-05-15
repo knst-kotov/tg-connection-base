@@ -51,7 +51,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to parse credantials file: %v", err)
 	}
-	sheetsSrv := database.NewSheetsSrv(srv, conf.Sheets.Users, conf.Sheets.Msg, conf.Sheets.Admins)
+	sheetsSrv := database.NewSheetsSrv(srv,
+		conf.Sheets.Users, conf.Sheets.Msg, conf.Sheets.Admins, conf.Sheets.Banned)
 
 	//graceful shutdown
 	quit := make(chan os.Signal, 1)

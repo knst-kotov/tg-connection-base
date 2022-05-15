@@ -16,6 +16,7 @@ const (
 	sheetUsers  = "SHEET_USERS"
 	sheetMsg    = "SHEET_MSG"
 	sheetAdmins = "SHEET_ADMINS"
+	sheetBanned = "SHEET_BANNED"
 	//cache
 	cacheAddr = "CACHE_ADDR"
 	keepTime  = "CACHE_KEEPTIME"
@@ -36,6 +37,7 @@ type (
 		Users  string
 		Msg    string
 		Admins string
+		Banned string
 	}
 
 	RedisConfig struct {
@@ -73,6 +75,7 @@ func envVar(test bool) (*Conf, error) {
 			Users:  os.Getenv(sheetUsers),
 			Msg:    os.Getenv(sheetMsg),
 			Admins: os.Getenv(sheetAdmins),
+			Banned: os.Getenv(sheetBanned),
 		},
 		Redis: RedisConfig{
 			KeepTime: int64(keepTimeInt),
