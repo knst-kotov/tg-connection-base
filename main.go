@@ -129,6 +129,14 @@ func main() {
 			continue
 		}
 
+		banned,err := handler.IsBanned(update.Message.Chat.ID, update.Message.Chat.UserName)
+		if err != nil {
+			logErr("IsBanned", err)
+		} else if banned {
+			fmt.Printf("user %v is banned\n", update.Message.Chat.UserName)
+			continue
+		}
+
 		// users
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {

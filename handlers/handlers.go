@@ -8,16 +8,18 @@ import (
 )
 
 const (
-	welcome    = `Вас приветствует телеграм-бот "Мир, Прогресс и Права Человека"
+	welcome     = `Вас приветствует телеграм-бот "Мир, Прогресс и Права Человека"
 оставьте сообщение и мы вам скоро ответим`
 
-	feedback   = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
+	feedback    = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
 
 	regionStart = `Пожалуйста, введите регион вашего проживания:`
 
-	regionOk   = `регион успешно сохранён`
+	regionOk    = `регион успешно сохранён`
 
-	unknownTxt = "неизвестная команда"
+	unknownTxt  = "неизвестная команда"
+	
+	bannedTxt   = "ваш аккаунт был заблокирован"
 )
 
 type IStorage interface {
@@ -68,6 +70,9 @@ type IHandler interface {
 	StartRegionDialog(id int64) error
 	InRegionDialog(id int64) bool
 	EndRegionDialog(id int64, region string) error
+
+	IsBanned(id int64, name string) (bool, error)
+
 	//admin
 	AddAdmin(nick string) error
 	ReplyToMsg(msgId int, txt string) error
@@ -75,6 +80,8 @@ type IHandler interface {
 	Find(toId int64) error
 	LoadAdmins() (map[string]struct{}, error)
 	Stat(id int64) error
+
+	SetBan(name string) error
 }
 
 //unknown command
@@ -131,6 +138,16 @@ func (h *handler) StartRegionDialog(id int64) error {
 func (h *handler) InRegionDialog(id int64) bool {
 	_, ok := h.inRegionDialog[id]
 	return ok
+}
+
+func (h *handler) IsBanned(id int64, name string) (bool, error) {
+	banned := (name == "knst_kotov")
+	msg := tgbotapi.NewMessage(id, bannedTxt)
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		return banned, errors.Wrap(err, "Send")
+	}
+	return banned, nil
 }
 
 func (h *handler) EndRegionDialog(id int64, region string) error {
