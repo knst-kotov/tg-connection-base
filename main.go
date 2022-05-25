@@ -25,6 +25,7 @@ var helpTxt = `
 /help - помощь
 /next - сообщения следующего на очереди
 /add (nickname) - добавить админа по нику
+/setban (nickname) - забанить пользователя по нику
 /all (text) - отправить всем пользователям текст
 /stat - статистика по боту
 `
@@ -111,6 +112,10 @@ func main() {
 					err := handler.AddAdmin(chat_id, nick)
 					admins[nick] = struct{}{}
 					logErr("AddAdmin", err)
+				case "setban":
+					nick := strings.Trim(update.Message.CommandArguments(), "@")
+					err := handler.SetBan(chat_id, nick)
+					logErr("SetBan", err)
 				case "all":
 					err := handler.SendAll(update.Message.CommandArguments())
 					logErr("SendAll", err)

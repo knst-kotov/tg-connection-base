@@ -13,6 +13,8 @@ const (
 
 	adminOk     = `Новый администратор бота успешно добавлен`
 
+	banOk      = `Пользователь забанен`
+
 	feedback    = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
 
 	regionStart = `Пожалуйста, введите регион вашего проживания:`
@@ -20,7 +22,7 @@ const (
 	regionOk    = `регион успешно сохранён`
 
 	unknownTxt  = "неизвестная команда"
-	
+
 	bannedTxt   = "ваш аккаунт был заблокирован"
 )
 
@@ -29,6 +31,7 @@ type IStorage interface {
 	LoadAdmins() (map[string]struct{}, error)
 	LoadBanned() (map[string]struct{}, error)
 	SaveAdmin(nick string) error
+	SetBan(nick string) error
 	GetLast() (int64, []int, error)
 	// users
 	SaveContact(id int64, name, nick string) error
@@ -55,15 +58,15 @@ type handler struct {
 	bannedUsers map[string]struct{}
 }
 
-func New(
-	cache ICache,
-	sheets IStorage,
-	bot *tgbotapi.BotAPI) *handler {
+func New(cache ICache, sheets IStorage, bot *tgbotapi.BotAPI) *handler {
+	bannedUsers, _ := sheets.LoadBanned()
+
 	return &handler{
 		cache:   cache,
 		storage: sheets,
 		bot:     bot,
 		inRegionDialog: make(map[int64]bool),
+		bannedUsers: bannedUsers,
 	}
 }
 
@@ -80,13 +83,12 @@ type IHandler interface {
 
 	//admin
 	AddAdmin(id int64, nick string) error
+	SetBan(id int64, nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
 	LoadAdmins() (map[string]struct{}, error)
 	Stat(id int64) error
-
-	SetBan(name string) error
 }
 
 //unknown command
@@ -146,10 +148,6 @@ func (h *handler) InRegionDialog(id int64) bool {
 }
 
 func (h *handler) IsBanned(id int64, name string) (bool, error) {
-	if h.bannedUsers == nil {
-		h.bannedUsers, _ = h.storage.LoadBanned()
-	}
-
 	_, banned := h.bannedUsers[name]
 	if banned {
 		msg := tgbotapi.NewMessage(id, bannedTxt)
@@ -184,6 +182,23 @@ func (h *handler) AddAdmin(id int64, nick string) error {
 	}
 
 	msg := tgbotapi.NewMessage(id, adminOk)
+	_, err = h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
+	}
+
+	return nil
+}
+
+func (h *handler) SetBan(id int64, nick string) error {
+	err := h.storage.SetBan(nick)
+	if err != nil {
+		return errors.Wrap(err, "SetBan")
+	}
+
+	h.bannedUsers[nick] = struct{}{}
+
+	msg := tgbotapi.NewMessage(id, banOk)
 	_, err = h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")

@@ -87,6 +87,10 @@ func (s sheetsSrv) SaveAdmin(nick string) error {
 	return SaveValue(s, s.admins, nick)
 }
 
+func (s sheetsSrv) SetBan(nick string) error {
+	return SaveValue(s, s.banned, nick)
+}
+
 func (s sheetsSrv) GetLast() (int64, []int, error) {
 	err := s.sortSheet()
 	if err != nil {
