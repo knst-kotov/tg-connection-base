@@ -11,6 +11,8 @@ const (
 	welcome     = `Вас приветствует телеграм-бот "Мир, Прогресс и Права Человека"
 оставьте сообщение и мы вам скоро ответим`
 
+	adminOk     = `Новый администратор бота успешно добавлен`
+
 	feedback    = `Спасибо! Ваше сообщение принято. Если хотите дополнить, пишите нам ещё.`
 
 	regionStart = `Пожалуйста, введите регион вашего проживания:`
@@ -77,7 +79,7 @@ type IHandler interface {
 	IsBanned(id int64, name string) (bool, error)
 
 	//admin
-	AddAdmin(nick string) error
+	AddAdmin(id int64, nick string) error
 	ReplyToMsg(msgId int, txt string) error
 	SendAll(txt string) error
 	Find(toId int64) error
@@ -175,11 +177,18 @@ func (h *handler) EndRegionDialog(id int64, region string) error {
 }
 
 //add new admin
-func (h *handler) AddAdmin(nick string) error {
+func (h *handler) AddAdmin(id int64, nick string) error {
 	err := h.storage.SaveAdmin(nick)
 	if err != nil {
 		return errors.Wrap(err, "SaveAdmin")
 	}
+
+	msg := tgbotapi.NewMessage(id, adminOk)
+	_, err = h.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "Send")
+	}
+
 	return nil
 }
 

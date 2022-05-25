@@ -88,6 +88,8 @@ func main() {
 			continue
 		}
 
+		chat_id := update.Message.Chat.ID
+
 		// admins
 		if _, ok := admins[update.Message.Chat.UserName]; ok {
 			//commands
@@ -106,7 +108,7 @@ func main() {
 					logErr("Find", err)
 				case "add":
 					nick := strings.Trim(update.Message.CommandArguments(), "@")
-					err := handler.AddAdmin(nick)
+					err := handler.AddAdmin(chat_id, nick)
 					admins[nick] = struct{}{}
 					logErr("AddAdmin", err)
 				case "all":

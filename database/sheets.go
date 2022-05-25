@@ -52,17 +52,9 @@ func LoadColumnAsString(s sheetsSrv, table string) (map[string]struct{}, error) 
 	return out, nil
 }
 
-func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
-	return LoadColumnAsString(s, s.admins)
-}
-
-func (s sheetsSrv) LoadBanned() (map[string]struct{}, error) {
-	return LoadColumnAsString(s, s.banned)
-}
-
-func (s sheetsSrv) SaveAdmin(nick string) error {
+func SaveValue(s sheetsSrv, table string, value string) error {
 	inValue := make([]interface{}, 1)
-	inValue[0] = nick
+	inValue[0] = value
 	outValue := make([][]interface{}, 1)
 	outValue[0] = inValue
 	valRen := sheets.ValueRange{
@@ -74,13 +66,25 @@ func (s sheetsSrv) SaveAdmin(nick string) error {
 		NullFields:      nil,
 	}
 	_, err := s.srv.Spreadsheets.Values.
-		Append(s.admins, "Sheet1!A:B", &valRen).
+		Append(table, "Sheet1!A:B", &valRen).
 		ValueInputOption("RAW").
 		Do()
 	if err != nil {
-		return errors.Wrap(err, "Unable to retrieve files")
+		return errors.Wrap(err, "Unable to append value")
 	}
 	return nil
+}
+
+func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
+	return LoadColumnAsString(s, s.admins)
+}
+
+func (s sheetsSrv) LoadBanned() (map[string]struct{}, error) {
+	return LoadColumnAsString(s, s.banned)
+}
+
+func (s sheetsSrv) SaveAdmin(nick string) error {
+	return SaveValue(s, s.admins, nick)
 }
 
 func (s sheetsSrv) GetLast() (int64, []int, error) {
