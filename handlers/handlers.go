@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/CookieNyanCloud/tg-connection-base/database"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 )
@@ -24,11 +26,13 @@ const (
 	unknownTxt  = "неизвестная команда"
 
 	bannedTxt   = "ваш аккаунт был заблокирован"
+
+	alreadyAnswered   = "на сообщение уже ответили"
 )
 
 type IStorage interface {
 	// admins
-	LoadAdmins() (map[string]struct{}, error)
+	LoadAdmins() (map[string]database.Admin, error)
 	LoadBanned() (map[string]struct{}, error)
 	SaveAdmin(nick string) error
 	SetBan(nick string) error
@@ -46,6 +50,9 @@ type ICache interface {
 	GetUser(msgId int) (int64, error)
 	SetBan(userId int64) error
 	GetBan(userId int64) (bool, error)
+
+	SetAnswered(msgId int, admin string) error
+	GetAnswered(msgId int) (string, error)
 }
 
 type handler struct {
@@ -55,18 +62,26 @@ type handler struct {
 
 	inRegionDialog map[int64]bool
 
+	admins      map[string]database.Admin
 	bannedUsers map[string]struct{}
 }
 
 func New(cache ICache, sheets IStorage, bot *tgbotapi.BotAPI) *handler {
+	admins, err := sheets.LoadAdmins()
+	if err != nil {
+		//log.Fatalf("loadAdmins: %v", err)
+	}
+	fmt.Println(admins)
+
 	bannedUsers, _ := sheets.LoadBanned()
 
 	return &handler{
-		cache:   cache,
-		storage: sheets,
-		bot:     bot,
+		cache:          cache,
+		storage:        sheets,
+		bot:            bot,
 		inRegionDialog: make(map[int64]bool),
-		bannedUsers: bannedUsers,
+		admins:         admins,
+		bannedUsers:    bannedUsers,
 	}
 }
 
@@ -84,10 +99,10 @@ type IHandler interface {
 	//admin
 	AddAdmin(id int64, nick string) error
 	SetBan(id int64, nick string) error
-	ReplyToMsg(msgId int, txt string) error
+	ReplyToMsg(msgId int, txt string, chat_id int64, admin string) error
 	SendAll(txt string) error
 	Find(toId int64) error
-	LoadAdmins() (map[string]struct{}, error)
+	IsAdmin(nick string) bool
 	Stat(id int64) error
 }
 
@@ -126,6 +141,31 @@ func (h *handler) Feedback(id int64, msgId int) error {
 	_, err = h.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "Send")
+	}
+
+	//send to all admins
+	for _, admin := range h.admins {
+		if admin.ChatId == 0 {
+			continue
+		}
+
+		msg := tgbotapi.ForwardConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: admin.ChatId,
+			},
+			FromChatID: id,
+			MessageID:  msgId,
+		}
+
+		forwarded, err := h.bot.Send(msg)
+		if err != nil {
+			return errors.Wrap(err, "Send")
+		}
+
+		err = h.cache.SetUser(forwarded.MessageID, id)
+		if err != nil {
+			return errors.Wrap(err, "SetUser")
+		}
 	}
 
 	return nil
@@ -181,6 +221,8 @@ func (h *handler) AddAdmin(id int64, nick string) error {
 		return errors.Wrap(err, "SaveAdmin")
 	}
 
+	h.admins[nick] = database.Admin{nick, 0}
+
 	msg := tgbotapi.NewMessage(id, adminOk)
 	_, err = h.bot.Send(msg)
 	if err != nil {
@@ -207,9 +249,9 @@ func (h *handler) SetBan(id int64, nick string) error {
 	return nil
 }
 
-//get all admins
-func (h *handler) LoadAdmins() (map[string]struct{}, error) {
-	return h.storage.LoadAdmins()
+func (h *handler) IsAdmin(nick string) bool {
+		_, ok := h.admins[nick]
+	return ok
 }
 
 //get last user to answer
@@ -241,7 +283,21 @@ func (h *handler) Find(toId int64) error {
 }
 
 //answer to message
-func (h *handler) ReplyToMsg(msgId int, txt string) error {
+func (h *handler) ReplyToMsg(msgId int, txt string, chat_id int64, admin string) error {
+	other_admin, err := h.cache.GetAnswered(msgId)
+	if err != nil {
+		return errors.Wrap(err, "GetAnswered")
+	}
+
+	if (other_admin != "" && other_admin != admin) {
+		msg := tgbotapi.NewMessage(chat_id, alreadyAnswered)
+		_, err = h.bot.Send(msg)
+		if err != nil {
+			return errors.Wrap(err, "Send")
+		}
+		return nil
+	}
+
 	userId, err := h.cache.GetUser(msgId)
 	if err != nil {
 		return errors.Wrap(err, "GetUser")
@@ -251,6 +307,9 @@ func (h *handler) ReplyToMsg(msgId int, txt string) error {
 	if err != nil {
 		return errors.Wrap(err, "Send")
 	}
+
+	err = h.cache.SetAnswered(msgId, admin)
+
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"time"
+	"fmt"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -42,4 +43,18 @@ func (c *Cache) SetBan(userId int64) error {
 func (c *Cache) GetBan(userId int64) (bool, error) {
 	idStr := strconv.FormatInt(userId, 10)
 	return c.db.Get(c.ctx, idStr).Bool()
+}
+
+func (c *Cache) SetAnswered(msgId int, admin string) error {
+	key := fmt.Sprintf("answered/%v", msgId)
+	return c.db.Set(c.ctx, key, admin, 0).Err()
+}
+
+func (c *Cache) GetAnswered(msgId int) (string, error) {
+	key := fmt.Sprintf("answered/%v", msgId)
+	admin, err := c.db.Get(c.ctx, key).Result()
+	if err == redis.Nil {
+		return "", nil
+	}
+	return admin, err
 }

@@ -13,6 +13,11 @@ import (
 
 var errNoRows = errors.New("no rows")
 
+type Admin struct {
+	Nick   string
+	ChatId int64
+}
+
 type sheetsSrv struct {
 	srv    *sheets.Service
 	db     string
@@ -75,8 +80,21 @@ func SaveValue(s sheetsSrv, table string, value string) error {
 	return nil
 }
 
-func (s sheetsSrv) LoadAdmins() (map[string]struct{}, error) {
-	return LoadColumnAsString(s, s.admins)
+func (s sheetsSrv) LoadAdmins() (map[string]Admin, error) {
+	out := make(map[string]Admin)
+	rsp, err := s.srv.Spreadsheets.Values.Get(s.admins, "Sheet1!A:B").Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	for _, row := range rsp.Values {
+		nick, ok := row[0].(string)
+		if !ok {
+			return nil, errors.Wrap(err, "not a string")
+		}
+		chat_id, _ := strconv.Atoi(row[1].(string))
+		out[nick] = Admin{nick, int64(chat_id)}
+	}
+	return out, nil
 }
 
 func (s sheetsSrv) LoadBanned() (map[string]struct{}, error) {

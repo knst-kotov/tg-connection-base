@@ -77,12 +77,6 @@ func main() {
 	}
 	handler := handlers.New(redisCache, sheetsSrv, bot)
 
-	//load admins from google sheet
-	admins, err := handler.LoadAdmins()
-	if err != nil {
-		log.Fatalf("loadAdmins: %v", err)
-	}
-
 	for update := range updates {
 
 		if update.Message == nil {
@@ -90,9 +84,11 @@ func main() {
 		}
 
 		chat_id := update.Message.Chat.ID
+		user_name := update.Message.Chat.UserName
+		//fmt.Printf("chat id = %v\n", chat_id)
 
 		// admins
-		if _, ok := admins[update.Message.Chat.UserName]; ok {
+		if handler.IsAdmin(user_name) {
 			//commands
 			if update.Message.IsCommand() {
 				switch update.Message.Command() {
@@ -110,7 +106,6 @@ func main() {
 				case "add":
 					nick := strings.Trim(update.Message.CommandArguments(), "@")
 					err := handler.AddAdmin(chat_id, nick)
-					admins[nick] = struct{}{}
 					logErr("AddAdmin", err)
 				case "setban":
 					nick := strings.Trim(update.Message.CommandArguments(), "@")
@@ -130,7 +125,7 @@ func main() {
 
 			// answer to user
 			if update.Message.ReplyToMessage != nil {
-				err := handler.ReplyToMsg(update.Message.ReplyToMessage.MessageID, update.Message.Text)
+				err := handler.ReplyToMsg(update.Message.ReplyToMessage.MessageID, update.Message.Text, chat_id, user_name)
 				logErr("ReplyToMsg", err)
 				continue
 			}
