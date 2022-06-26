@@ -23,7 +23,6 @@ import (
 
 var helpTxt = `
 /help - помощь
-/next - сообщения следующего на очереди
 /add (nickname) - добавить админа по нику
 /setban (nickname) - забанить пользователя по нику
 /all (text) - отправить всем пользователям текст
@@ -100,9 +99,6 @@ func main() {
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpTxt)
 					_, err = bot.Send(msg)
 					logErr("Send", err)
-				case "next":
-					err := handler.Find(update.Message.Chat.ID)
-					logErr("Find", err)
 				case "add":
 					nick := strings.Trim(update.Message.CommandArguments(), "@")
 					err := handler.AddAdmin(chat_id, nick)
