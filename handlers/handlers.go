@@ -303,12 +303,32 @@ func (h *handler) ReplyToMsg(msgId int, txt string, chat_id int64, admin string)
 		return errors.Wrap(err, "GetUser")
 	}
 	msg := tgbotapi.NewMessage(userId, txt)
-	_, err = h.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "Send")
+	answer, send_err := h.bot.Send(msg)
+	if send_err != nil {
+		return errors.Wrap(send_err, "Send")
 	}
 
 	err = h.cache.SetAnswered(msgId, admin)
+
+	//send answer to all admins
+	for _, other_admin := range h.admins {
+		if other_admin.ChatId == 0 || other_admin.Nick == admin {
+			continue
+		}
+
+		msg := tgbotapi.ForwardConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: other_admin.ChatId,
+			},
+			FromChatID: chat_id,
+			MessageID:  answer.MessageID,
+		}
+
+		_, err := h.bot.Send(msg)
+		if err != nil {
+			return errors.Wrap(err, "Send")
+		}
+	}
 
 	return nil
 }
