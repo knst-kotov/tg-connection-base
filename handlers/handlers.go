@@ -320,7 +320,7 @@ func (h *handler) ReplyToMsg(msgId int, txt string, chat_id int64, admin string)
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: other_admin.ChatId,
 			},
-			FromChatID: chat_id,
+			FromChatID: userId,
 			MessageID:  answer.MessageID,
 		}
 
